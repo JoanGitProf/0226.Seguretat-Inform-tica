@@ -593,29 +593,43 @@
         let downtimeHours = 0;
         let survived = true;
 
+        // [TEST 1] SUBMINISTRAMENT ELÈCTRIC
         setTimeout(() => {
             log.innerText += "\n[TEST 1] ⚡ Tall de subministrament elèctric general a la xarxa (3 hores)...";
-            if (selectedItems.has('generator') && selectedItems.has('sai_online')) {
-                log.innerText += "\n-> ✅ SAI Online manté la tensió sense microtalls i el Grup Electrogen assumeix la càrrega contínua. 0h caiguda.";
-            } else if (selectedItems.has('sai_offline') && !selectedItems.has('generator')) {
-                log.innerText += "\n-> ⚠️ El SAI Offline aguanta 40 minuts i després la sala s'apaga completament.";
+            
+            const hasGen = selectedItems.has('generator');
+            const hasSaiOnline = selectedItems.has('sai_online');
+            const hasSaiOffline = selectedItems.has('sai_offline');
+
+            if (hasGen && hasSaiOnline) {
+                log.innerText += "\n-> ✅ SAI Online sosté la tensió sense cap microtall i el Generador assumeix la càrrega contínua. 0h de caiguda.";
+            } else if (hasGen && hasSaiOffline) {
+                log.innerText += "\n-> ✅ El SAI Offline manté la sala fins que arrenca el Generador (petit microtall absorbit). 0.1h de caiguda.";
+                downtimeHours += 0.1;
+            } else if (hasSaiOnline || hasSaiOffline) {
+                log.innerText += "\n-> ⚠️ El SAI ha esgotat les bateries als 40 minuts per manca de generador dièsel. El CPD ha caigut 2.3 hores.";
                 downtimeHours += 2.3;
             } else {
                 log.innerText += "\n-> ❌ Apagada sobtada dels sistemes per manca de redundància elèctrica.";
-                downtimeHours += 3;
+                downtimeHours += 3.0;
             }
         }, 1000);
 
+        // [TEST 2] CLIMATITZACIÓ I REFRIGERACIÓ
         setTimeout(() => {
             log.innerText += "\n\n[TEST 2] 🌡️ Prova de càrrega tèrmica extrema amb servidors al 100%...";
             if (selectedItems.has('ind_cooling') && selectedItems.has('aisles_floor')) {
                 log.innerText += "\n-> ✅ El circuit d'aire amb terra tècnic i climatització manté el gradient a 22 °C.";
+            } else if (selectedItems.has('ind_cooling')) {
+                log.innerText += "\n-> ⚠️ La climatització funciona però sense passadissos fred/calent hi ha punts calents a l'interior dels racks.";
+                downtimeHours += 1.5;
             } else {
-                log.innerText += "\n-> ⚠️ Bossetes de calor acumulades per manca de passadissos freds/calents. Aturades per protecció tèrmica.";
+                log.innerText += "\n-> ❌ Sobretemperatura greu. Aturades dels servidors per protecció tèrmica.";
                 downtimeHours += 4.5;
             }
         }, 2200);
 
+        // [TEST 3] PREVENCIÓ D'INCENDIS
         setTimeout(() => {
             log.innerText += "\n\n[TEST 3] 🔥 Alarma de foc per sobreescalfament d'un transformador...";
             if (selectedItems.has('gas_extinction')) {
@@ -631,32 +645,37 @@
             }
         }, 3400);
 
+        // [TEST 4] ACCÉS FÍSIC I SEGURETAT
         setTimeout(() => {
             log.innerText += "\n\n[TEST 4] 👤 Intent d'intrusió per tècnica 'Tailgating' (colar-se darrere un empleat)...";
             if (selectedItems.has('mantrap')) {
                 log.innerText += "\n-> ✅ El sistema Mantrap de doble porta bloqueja l'individu a la cabina d'accés.";
+            } else if (selectedItems.has('cctv_sensors')) {
+                log.innerText += "\n-> ⚠️ L'intrús ha accedit a la sala però ha estat detectat ràpidament per les càmeres CCTV i sensors de moviment.";
+                downtimeHours += 0.5;
             } else {
-                log.innerText += "\n-> ⚠️ Intrusió física no detectada a la zona de racks.";
-                downtimeHours += 1.5;
+                log.innerText += "\n-> ❌ Intrusió física no detectada a la zona de racks amb possible extracció de dades.";
+                downtimeHours += 5.0;
             }
         }, 4600);
 
+        // AVALUACIÓ FINAL SEGONS NORMA TIA-942
         setTimeout(() => {
             const tierResult = document.getElementById('tierResult');
             let tierHTML = "";
 
-            if (!survived || downtimeHours > 28) {
+            if (!survived || downtimeHours > 22) {
                 tierHTML = `<div class="tier-badge tier-1">Classificació Final: TIER I (Disponibilitat 99.67%)</div>
-                <p style="margin-top: 8px; color: var(--danger);">Temps estimat d'inactivitat anual: > 28 hores. La sala té punts únics de fallada greus.</p>`;
-            } else if (downtimeHours > 2) {
+                <p style="margin-top: 8px; color: var(--danger);">Temps d'inactivitat estimat anual: > 28 hores. La instal·lació té punts únics de fallada crítics.</p>`;
+            } else if (downtimeHours > 1.6) {
                 tierHTML = `<div class="tier-badge tier-2">Classificació Final: TIER II (Disponibilitat 99.74%)</div>
-                <p style="margin-top: 8px; color: var(--warning);">Temps estimat d'inactivitat anual: ~22 hores. Disposa de components redundants parcials.</p>`;
-            } else if (downtimeHours > 0.4 || !selectedItems.has('backup_cpd')) {
+                <p style="margin-top: 8px; color: var(--warning);">Temps d'inactivitat estimat anual: ~22 hores. Disposa de components redundants parcials.</p>`;
+            } else if (downtimeHours <= 1.6 && !selectedItems.has('backup_cpd')) {
                 tierHTML = `<div class="tier-badge tier-3">Classificació Final: TIER III (Disponibilitat 99.98%)</div>
-                <p style="margin-top: 8px; color: var(--primary);">Temps estimat d'inactivitat anual: 1.6 hores. Sala amb manteniment concurrent (N+1).</p>`;
+                <p style="margin-top: 8px; color: var(--primary);">Temps d'inactivitat estimat anual: 1.6 hores. Sala amb manteniment concurrent (N+1) i alta resiliència.</p>`;
             } else {
                 tierHTML = `<div class="tier-badge tier-4">Classificació Final: TIER IV (Disponibilitat 99.995%)</div>
-                <p style="margin-top: 8px; color: var(--accent);">Temps d'inactivitat inferior a 24 minuts/any. Tolerància total a fallades (2N+1) i CPD redundant actiu.</p>`;
+                <p style="margin-top: 8px; color: var(--accent);">Tolerància total a fallades (2N+1) i CPD redundant sincronitzat actiu.</p>`;
             }
 
             tierResult.innerHTML = tierHTML;

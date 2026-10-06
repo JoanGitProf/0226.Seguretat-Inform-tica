@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Integral de CPD i Seguretat Passiva (SMX2)</title>
+    <style>
+        :root {
+            --bg-color: #0b1120;
+            --card-bg: #1e293b;
+            --primary: #38bdf8;
+            --accent: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --cold-aisle: #0369a1;
+            --hot-aisle: #b91c1c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 15px;
+        }
+
+        h1 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h2 {
+            font-size: 1.3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            background-color: #0f172a;
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media(max-width: 700px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        .budget-bar-container {
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            background: #111827;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 2px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .budget-text {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .catalog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .item-card {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .item-card:hover {
+            border-color: var(--primary);
+        }
+
+        .item-card.selected {
+            border-color: var(--accent);
+            background-color: rgba(34, 197, 94, 0.1);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .item-cost {
+            color: var(--warning);
+        }
+
+        .item-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        /* --- PLANOL I DISSENY ESPACIAL --- */
+        .blueprint-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .palette {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 180px;
+        }
+
+        .palette-btn {
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            color: var(--text-color);
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .palette-btn.active {
+            border-color: var(--primary);
+            background: rgba(56, 189, 248, 0.2);
+        }
+
+        .grid-canvas {
+            display: grid;
+            grid-template-columns: repeat(6, 60px);
+            grid-template-rows: repeat(6, 60px);
+            gap: 4px;
+            background: #0f172a;
+            padding: 10px;
+            border: 2px dashed var(--border);
+            border-radius: 6px;
+        }
+
+        .grid-cell {
+            width: 60px;
+            height: 60px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            cursor: pointer;
+            user-select: none;
+            text-align: center;
+            transition: background 0.15s;
+        }
+
+        .grid-cell:hover {
+            border-color: var(--primary);
+        }
+
+        .cell-rack { background: #3b82f6; color: white; font-weight: bold; }
+        .cell-ac { background: #06b6d4; color: black; font-weight: bold; }
+        .cell-power { background: #eab308; color: black; font-weight: bold; }
+        .cell-gas { background: #ec4899; color: white; font-weight: bold; }
+        .cell-door { background: #22c55e; color: black; font-weight: bold; }
+
+        button.action-btn {
+            background-color: var(--primary);
+            color: #0f172a;
+            border: none;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        button.action-btn:hover {
+            background-color: #0284c7;
+            color: white;
+        }
+
+        .hidden { display: none; }
+
+        .simulation-log {
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            min-height: 200px;
+            margin-top: 15px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .tier-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+        .tier-1 { background-color: #b91c1c; }
+        .tier-2 { background-color: #d97706; }
+        .tier-3 { background-color: #2563eb; }
+        .tier-4 { background-color: #15803d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🏢 Simulador Integral de CPD i Seguretat Passiva</h1>
+        <p class="subtitle">Auditoria, Dimensionament, Disseny Espacial i Test de Resiliència (SMX2)</p>
+    </header>
+
+    <!-- FASE 1: AUDITORIA I FONAMENTS -->
+    <div id="phase1" class="card">
+        <h2>1️⃣ Fase 1: Auditoria Ambiental i Càlcul de Potència</h2>
+        <p style="margin-bottom: 15px; color: var(--text-muted);">
+            L'empresa necessita instal·lar <strong>8 Racks</strong> de servidors (consum de <strong>2.500 W</strong> per rack) més <strong>1.000 W</strong> en equips auxiliars de monitorització. Disposen d'un banc de bateries per a emergències de <strong>14.000 Wh</strong>.
+        </p>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>1. Potència Aparent necessària (VA) amb factor 1,4:</label>
+                <input type="number" id="calcVA" placeholder="Ex: 25000">
+            </div>
+            <div class="form-group">
+                <label>2. Autonomia del SAI (en minuts amb càrrega total):</label>
+                <input type="number" id="calcMins" placeholder="Ex: 40">
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>3. Rang de temperatura òptim d'una Sala Freda:</label>
+                <select id="tempSelect">
+                    <option value="">-- Selecciona --</option>
+                    <option value="15-18">15 °C a 18 °C</option>
+                    <option value="21-23">21 °C a 23 °C</option>
+                    <option value="25-30">25 °C a 30 °C</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>4. Emplaçament recomanat a l'edifici:</label>
+                <select id="locSelect">
+                    <option value="">-- Selecciona --</option>
+                    <option value="soterrani">Soterrani (aïllat però risc d'inundació)</option>
+                    <option value="planta_baixa">Planta Baixa (risc d'intrusió directa)</option>
+                    <option value="primera_planta">Primera Planta (equilibri òptim de riscos)</option>
+                    <option value="atic">Àtic (risc d'incendi que puja / goteres)</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="action-btn" onclick="validatePhase1()">Validar Càlculs i Continuar ➔</button>
+        <p id="phase1Error" style="color: var(--danger); margin-top: 10px; font-weight: bold;"></p>
+    </div>
+
+    <!-- FASE 2: PRESSUPOST I COMPRES -->
+    <div id="phase2" class="hidden">
+        <div class="budget-bar-container">
+            <div class="budget-text">Pressupost disponible: <span id="budgetDisplay" style="color: var(--accent);">100</span> / 100 PC</div>
+            <button class="action-btn" style="width: auto; padding: 8px 16px;" onclick="goToPhase3()">Passar al Disseny Espacial (Plànol) ➔</button>
+        </div>
+
+        <div class="card">
+            <h2>2️⃣ Fase 2: Selecció de Mesures i Equipament</h2>
+            <p style="margin-bottom: 15px; color: var(--text-muted);">Gestiona els 100 Punts de Crèdit (PC) per dotar la sala dels millors sistemes.</p>
+
+            <h3 style="margin: 15px 0 10px; color: var(--primary);">⚡ Alimentació Elèctrica</h3>
+            <div class="catalog-grid">
+                <div class="item-card" onclick="toggleItem(this, 'sai_offline', 10)">
+                    <div class="item-header"><span>SAI Offline</span><span class="item-cost">10 PC</span></div>
+                    <div class="item-desc">Només genera corrent en talls. No estabilitza pics.</div>
+                </div>
+                <div class="item-card" onclick="toggleItem(this, 'sai_online', 25)">
+                    <div class="item-header"><span>SAI Online Doble Conversió</span><span class="item-cost">25 PC</span></div>
+                    <div class="item-desc">Filtra contínuament microtalls i distorsions d'ona.</div>
+                </div>
+                <div class="item-card" onclick="toggleItem(this, 'generator', 20)">
+                    <div class="item-header"><span>Grup Electrogen (Dièsel)</span><span class="item-cost">20 PC</span></div>
+                    <div class="item-desc">Generador auxiliar per talls de llarga durada.</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 20px 0 10px; color: var(--primary);">❄️ Climatització i Estructura</h3>
+            <div class="catalog-grid">
+                <div class="item-card" onclick="toggleItem(this, 'ind_cooling', 20)">
+                    <div class="item-header"><span>Climatització Industrial Redundant</span><span class="item-cost">20 PC</span></div>
+                    <div class="item-desc">Circuit tancat, control d'humitat (40-60%) i filtre de pols.</div>
+                </div>
+                <div class="item-card" onclick="toggleItem(this, 'aisles_floor', 15)">
+                    <div class="item-header"><span>Passadissos Fred/Calent + Fals Terra</span><span class="item-cost">15 PC</span></div>
+                    <div class="item-desc">Optimitza el flux d'aire i canalitza cablejat sota terra tècnic.</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 20px 0 10px; color: var(--primary);">🧯 Protecció Contra Incendis</h3>
+            <div class="catalog-grid">
+                <div class="item-card" onclick="toggleItem(this, 'water_sprinklers', 10)">
+                    <div class="item-header"><span>Ruixadors d'aigua</span><span class="item-cost">10 PC</span></div>
+                    <div class="item-desc">Extinció per aigua a pressió al sostre.</div>
+                </div>
+                <div class="item-card" onclick="toggleItem(this, 'gas_extinction', 25)">
+                    <div class="item-header"><span>Extinció per Gas (CO₂ / Novec)</span><span class="item-cost">25 PC</span></div>
+                    <div class="item-desc">Sensors òptics i gas net que no danya els servidors.</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 20px 0 10px; color: var(--primary);">🚪 Seguretat Física i Redundància Externa</h3>
+            <div class="catalog-grid">
+                <div class="item-card" onclick="toggleItem(this, 'mantrap', 20)">
+                    <div class="item-header"><span>Mantrap + Biometria</span><span class="item-cost">20 PC</span></div>
+                    <div class="item-desc">Doble porta d'exclusió amb accés per empremta/iris.</div>
+                </div>
+                <div class="item-card" onclick="toggleItem(this, 'cctv_sensors', 10)">
+                    <div class="item-header"><span>CCTV + Sensors Interns</span><span class="item-cost">10 PC</span></div>
+                    <div class="item-desc">Gravació contínua i detectors de moviment volumètrics.</div>
+                </div>
+                <div class="item-card" onclick="toggleItem(this, 'backup_cpd', 30)">
+                    <div class="item-header"><span>CPD Redundant (CR) en Stand-by</span><span class="item-cost">30 PC</span></div>
+                    <div class="item-desc">Rèplica externa sincronitzada a una altra ciutat.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FASE 3: DISSENY ESPACIAL (PLÀNOL DE LA SALA) -->
+    <div id="phase3" class="card hidden">
+        <h2>3️⃣ Fase 3: Disseny i Distribució Física de la Sala (Plànol)</h2>
+        <p style="margin-bottom: 10px; color: var(--text-muted);">
+            Tria una eina de la paleta i fes clic a la graella per ubicar els elements al teu CPD.
+        </p>
+
+        <div class="blueprint-container">
+            <div class="palette">
+                <strong>Paleta d'elements:</strong>
+                <button class="palette-btn active" onclick="setTool('door')">🚪 Entrada / Mantrap</button>
+                <button class="palette-btn" onclick="setTool('rack')">🖥️ Rack Servidor</button>
+                <button class="palette-btn" onclick="setTool('ac')">❄️ Clima (CRAC)</button>
+                <button class="palette-btn" onclick="setTool('power')">⚡ Sala Potència (SAI)</button>
+                <button class="palette-btn" onclick="setTool('gas')">🧯 Tancs de Gas</button>
+                <button class="palette-btn" onclick="setTool('empty')">⬜ Esborrar casella</button>
+            </div>
+
+            <div>
+                <div class="grid-canvas" id="gridCanvas"></div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">
+                    * Requisits mínims al plànol: 1 Entrada, mínim 4 Racks, 1 Climatitzador i 1 Sala de Potència.
+                </div>
+            </div>
+        </div>
+
+        <button class="action-btn" style="margin-top: 20px;" onclick="validateLayoutAndRun()">Executar Test d'Estrès i Simulació 🚀</button>
+        <p id="layoutError" style="color: var(--danger); margin-top: 10px; font-weight: bold;"></p>
+    </div>
+
+    <!-- FASE 4: SIMULACIÓ I RESULTATS TIER -->
+    <div id="phase4" class="card hidden">
+        <h2>4️⃣ Fase 4: Informe d'Incidents i Nivell TIER Assolit</h2>
+        <div id="simulationLog" class="simulation-log"></div>
+        <div id="tierResult" style="margin-top: 15px; text-align: center;"></div>
+        <button class="action-btn" style="margin-top: 20px;" onclick="location.reload()">🔄 Reiniciar Pràctica</button>
+    </div>
+</div>
+
+<script>
+    // Variables d'estat
+    let budget = 100;
+    const selectedItems = new Set();
+    let currentTool = 'door';
+    const gridState = Array(36).fill('empty');
+
+    // Inicialitzar la graella 6x6
+    const gridCanvas = document.getElementById('gridCanvas');
+    for (let i = 0; i < 36; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('grid-cell');
+        cell.dataset.index = i;
+        cell.onclick = () => paintCell(i, cell);
+        gridCanvas.appendChild(cell);
+    }
+
+    function setTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.palette-btn').forEach(btn => btn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+    }
+
+    function paintCell(index, element) {
+        gridState[index] = currentTool;
+        element.className = 'grid-cell'; // reset classes
+        element.innerText = '';
+
+        if (currentTool === 'rack') {
+            element.classList.add('cell-rack');
+            element.innerText = 'RACK';
+        } else if (currentTool === 'ac') {
+            element.classList.add('cell-ac');
+            element.innerText = 'CRAC';
+        } else if (currentTool === 'power') {
+            element.classList.add('cell-power');
+            element.innerText = 'SAI/PWR';
+        } else if (currentTool === 'gas') {
+            element.classList.add('cell-gas');
+            element.innerText = 'GAS';
+        } else if (currentTool === 'door') {
+            element.classList.add('cell-door');
+            element.innerText = 'ACCÉS';
+        }
+    }
+
+    function validatePhase1() {
+        const valVA = parseInt(document.getElementById('calcVA').value);
+        const valMins = parseInt(document.getElementById('calcMins').value);
+        const temp = document.getElementById('tempSelect').value;
+        const loc = document.getElementById('locSelect').value;
+        const err = document.getElementById('phase1Error');
+
+        // Total W = (8*2500) + 1000 = 21.000 W. 
+        // VA = 21.000 * 1.4 = 29.400 VA.
+        // Mins = (14.000 Wh / 21.000 W) * 60 = 40 minuts.
+        if (valVA !== 29400) {
+            err.innerText = "❌ Càlcul de VA erroni. Revisa: Potència total en W = 21.000 W. Multiplica per 1,4.";
+            return;
+        }
+
+        if (valMins !== 40) {
+            err.innerText = "❌ Càlcul d'autonomia erroni.";
+            return;
+        }
+
+        if (temp !== "21-23") {
+            err.innerText = "❌ Temperatura incorrecta";
+            return;
+        }
+
+        if (loc !== "primera_planta") {
+            err.innerText = "❌ Emplaçament invàlid";
+            return;
+        }
+
+        err.innerText = "";
+        document.getElementById('phase1').classList.add('hidden');
+        document.getElementById('phase2').classList.remove('hidden');
+    }
+
+    function toggleItem(card, itemId, cost) {
+        if (selectedItems.has(itemId)) {
+            selectedItems.delete(itemId);
+            budget += cost;
+            card.classList.remove('selected');
+        } else {
+            if (budget - cost < 0) {
+                alert("⚠️ Has esgotat el pressupost disponible!");
+                return;
+            }
+            selectedItems.add(itemId);
+            budget -= cost;
+            card.classList.add('selected');
+        }
+        document.getElementById('budgetDisplay').innerText = budget;
+    }
+
+    function goToPhase3() {
+        if (selectedItems.size === 0) {
+            alert("Has d'adquirir alguna mesura abans de passar al disseny.");
+            return;
+        }
+        document.getElementById('phase2').classList.add('hidden');
+        document.getElementById('phase3').classList.remove('hidden');
+    }
+
+    function validateLayoutAndRun() {
+        const counts = gridState.reduce((acc, curr) => {
+            acc[curr] = (acc[curr] || 0) + 1;
+            return acc;
+        }, {});
+
+        const err = document.getElementById('layoutError');
+
+        if (!counts.door || counts.door < 1) {
+            err.innerText = "❌ Has d'ubicar com a mínim 1 punt d'accés a la sala!";
+            return;
+        }
+        if (!counts.rack || counts.rack < 4) {
+            err.innerText = "❌ El CPD ha de contenir com a mínim 4 caselles de Racks!";
+            return;
+        }
+        if (!counts.ac || counts.ac < 1) {
+            err.innerText = "❌ Cal col·locar com a mínim 1 unitat de Climatització (CRAC) a la sala!";
+            return;
+        }
+        if (!counts.power || counts.power < 1) {
+            err.innerText = "❌ Cal ubicar la Sala de Potència (SAI/Generador)!";
+            return;
+        }
+
+        err.innerText = "";
+        document.getElementById('phase3').classList.add('hidden');
+        document.getElementById('phase4').classList.remove('hidden');
+
+        runSimulation();
+    }
+
+    function runSimulation() {
+        const log = document.getElementById('simulationLog');
+        log.innerText = "🚀 Iniciant banc de proves i estrès del CPD...\n";
+
+        let downtimeHours = 0;
+        let survived = true;
+
+        setTimeout(() => {
+            log.innerText += "\n[TEST 1] ⚡ Tall de subministrament elèctric general a la xarxa (3 hores)...";
+            if (selectedItems.has('generator') && selectedItems.has('sai_online')) {
+                log.innerText += "\n-> ✅ SAI Online manté la tensió sense microtalls i el Grup Electrogen assumeix la càrrega contínua. 0h caiguda.";
+            } else if (selectedItems.has('sai_offline') && !selectedItems.has('generator')) {
+                log.innerText += "\n-> ⚠️ El SAI Offline aguanta 40 minuts i després la sala s'apaga completament.";
+                downtimeHours += 2.3;
+            } else {
+                log.innerText += "\n-> ❌ Apagada sobtada dels sistemes per manca de redundància elèctrica.";
+                downtimeHours += 3;
+            }
+        }, 1000);
+
+        setTimeout(() => {
+            log.innerText += "\n\n[TEST 2] 🌡️ Prova de càrrega tèrmica extrema amb servidors al 100%...";
+            if (selectedItems.has('ind_cooling') && selectedItems.has('aisles_floor')) {
+                log.innerText += "\n-> ✅ El circuit d'aire amb terra tècnic i climatització manté el gradient a 22 °C.";
+            } else {
+                log.innerText += "\n-> ⚠️ Bossetes de calor acumulades per manca de passadissos freds/calents. Aturades per protecció tèrmica.";
+                downtimeHours += 4.5;
+            }
+        }, 2200);
+
+        setTimeout(() => {
+            log.innerText += "\n\n[TEST 3] 🔥 Alarma de foc per sobreescalfament d'un transformador...";
+            if (selectedItems.has('gas_extinction')) {
+                log.innerText += "\n-> ✅ Els sensors òptics actuen: descàrrega de gas net que extingeix el foc sense dany elèctric.";
+            } else if (selectedItems.has('water_sprinklers')) {
+                log.innerText += "\n-> ❌ Els ruixadors d'aigua activats han fet curtcircuit a tots els equips del CPD! Pèrdua catastròfica.";
+                downtimeHours += 80;
+                survived = false;
+            } else {
+                log.innerText += "\n-> ❌ Sense sistema d'extinció automàtica, el foc crema 2 racks sencers.";
+                downtimeHours += 100;
+                survived = false;
+            }
+        }, 3400);
+
+        setTimeout(() => {
+            log.innerText += "\n\n[TEST 4] 👤 Intent d'intrusió per tècnica 'Tailgating' (colar-se darrere un empleat)...";
+            if (selectedItems.has('mantrap')) {
+                log.innerText += "\n-> ✅ El sistema Mantrap de doble porta bloqueja l'individu a la cabina d'accés.";
+            } else {
+                log.innerText += "\n-> ⚠️ Intrusió física no detectada a la zona de racks.";
+                downtimeHours += 1.5;
+            }
+        }, 4600);
+
+        setTimeout(() => {
+            const tierResult = document.getElementById('tierResult');
+            let tierHTML = "";
+
+            if (!survived || downtimeHours > 28) {
+                tierHTML = `<div class="tier-badge tier-1">Classificació Final: TIER I (Disponibilitat 99.67%)</div>
+                <p style="margin-top: 8px; color: var(--danger);">Temps estimat d'inactivitat anual: > 28 hores. La sala té punts únics de fallada greus.</p>`;
+            } else if (downtimeHours > 2) {
+                tierHTML = `<div class="tier-badge tier-2">Classificació Final: TIER II (Disponibilitat 99.74%)</div>
+                <p style="margin-top: 8px; color: var(--warning);">Temps estimat d'inactivitat anual: ~22 hores. Disposa de components redundants parcials.</p>`;
+            } else if (downtimeHours > 0.4 || !selectedItems.has('backup_cpd')) {
+                tierHTML = `<div class="tier-badge tier-3">Classificació Final: TIER III (Disponibilitat 99.98%)</div>
+                <p style="margin-top: 8px; color: var(--primary);">Temps estimat d'inactivitat anual: 1.6 hores. Sala amb manteniment concurrent (N+1).</p>`;
+            } else {
+                tierHTML = `<div class="tier-badge tier-4">Classificació Final: TIER IV (Disponibilitat 99.995%)</div>
+                <p style="margin-top: 8px; color: var(--accent);">Temps d'inactivitat inferior a 24 minuts/any. Tolerància total a fallades (2N+1) i CPD redundant actiu.</p>`;
+            }
+
+            tierResult.innerHTML = tierHTML;
+        }, 5800);
+    }
+</script>
+</body>
+</html>
